@@ -31,24 +31,134 @@ fn read_passports() -> Vec<HashMap<String, String>> {
     return passports;
 }
 
-fn is_valid_passport(passport: &HashMap<String, String>, req_keys: &HashSet<String>) -> bool {
-    for key in req_keys {
-        if !passport.contains_key(key) {
-            println!("Missing {}", key);
+fn is_year_valid(passport: &HashMap<String, String>, key: &str, min: i32, max: i32) -> bool {
+    if !passport.contains_key(key) {
+        return false;
+    }
+
+    let parse_result = passport[key].parse::<i32>();
+    if parse_result.is_err() {
+        return false;
+    }
+
+    let value = parse_result.unwrap();
+    if value < min || value > max {
+        return false;
+    }
+
+    return true;
+}
+
+fn is_height_valid(passport: &HashMap<String, String>) -> bool {
+    if !passport.contains_key("hgt") {
+        return false;
+    }
+
+    let re = Regex::new(r"^(?P<value>\d+)(?P<units>in|cm)$").unwrap();
+    let caps = re.captures(&passport["hgt"]);
+    if caps.is_none() {
+        return false;
+    }
+    let caps = caps.unwrap();
+
+    let parse_result = caps["value"].parse::<i32>();
+    if parse_result.is_err() {
+        return false;
+    }
+    let value = parse_result.unwrap();
+    let units = &caps["units"];
+    if units == "in" {
+        if value < 59 || value > 76 {
             return false;
         }
+        return true;
+    } else if units == "cm" {
+        if value < 150 || value > 193 {
+            return false;
+        }
+        return true;
     }
+
+    return false;
+}
+
+fn is_hair_colour_valid(passport: &HashMap<String, String>) -> bool {
+    if !passport.contains_key("hcl") {
+        return false;
+    }
+
+    let re = Regex::new(r"^#[0-9a-f]{6}$").unwrap();
+    if re.is_match(&passport["hcl"]) {
+        return true;
+    }
+    return false;
+}
+
+fn is_eye_colour_valid(passport: &HashMap<String, String>) -> bool {
+    if !passport.contains_key("ecl") {
+        return false;
+    }
+
+    let allowed: HashSet<String> = ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"]
+        .iter()
+        .map(|k| k.to_string())
+        .collect();
+    if allowed.contains(&passport["ecl"]) {
+        return true;
+    }
+
+    return false;
+}
+
+fn is_pid_valid(passport: &HashMap<String, String>) -> bool {
+    if !passport.contains_key("pid") {
+        return false;
+    }
+
+    let re = Regex::new("^[0-9]{9}$").unwrap();
+    if re.is_match(&passport["pid"]) {
+        return true;
+    }
+
+    return false;
+}
+
+fn is_valid_passport(passport: &HashMap<String, String>) -> bool {
+    if !is_year_valid(passport, "byr", 1920, 2002) {
+        return false;
+    }
+
+    if !is_year_valid(passport, "iyr", 2010, 2020) {
+        return false;
+    }
+
+    if !is_year_valid(passport, "eyr", 2020, 2030) {
+        return false;
+    }
+
+    if !is_height_valid(passport) {
+        return false;
+    }
+
+    if !is_hair_colour_valid(passport) {
+        return false;
+    }
+
+    if !is_eye_colour_valid(passport) {
+        return false;
+    }
+
+    if !is_pid_valid(passport) {
+        return false;
+    }
+
     return true;
 }
 
 fn count_valid_passports(passports: &Vec<HashMap<String, String>>) -> i32 {
-    let req_keys: HashSet<String> = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"]
-        .iter()
-        .map(|k| k.to_string())
-        .collect();
     let mut valid_count = 0;
     for passport in passports {
-        if is_valid_passport(&passport, &req_keys) {
+        if is_valid_passport(&passport) {
             valid_count += 1;
         }
     }
